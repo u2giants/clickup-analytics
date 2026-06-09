@@ -1,9 +1,9 @@
 # Interview Synthesis — POP Creations System Requirements
 
-**Last updated:** 2026-05-28  
-**Sources:** 43 answered interview questions across 3 rounds (May 5 – May 21, 2026)  
-**Interviewees:** Jessica Cortázar (PM, Rounds 1 & 3), Liz Parkin (Creative Director, Round 2)  
-**Spruce Line (Jen):** Not yet interviewed — Spruce Line design is provisional until her answers arrive.
+**Last updated:** 2026-06-09  
+**Sources:** 77 answered interview questions across 4 rounds (May 5 – June 9, 2026)  
+**Interviewees:** Jessica Cortázar (PM, Rounds 1 & 3), Liz Parkin (Creative Director, Round 2), Jennifer (Spruce Line Creative Director, Round 4)  
+**Status:** All interviews complete. All open questions resolved.
 
 This document translates raw interview answers into concrete system requirements and design decisions.
 It supersedes the "open questions" section of `BUSINESS_INTELLIGENCE.md` for everything covered here.
@@ -326,6 +326,178 @@ Based on interview answers, some intuitive features would create friction rather
 14. **AI natural language queries** — starting with the 6 exact questions Jessica specified
 15. **Proactive season deck builder** — filter approved-but-unsold concepts by season + product type → generate offer deck
 
-### Open Until Jen's Interview
-16. **Spruce Line data model** — collection-based vs. SKU-based is unconfirmed
-17. **Spruce Line stages** — provisional stage map from data only; Jen may describe something different
+### Spruce Line Specifics (now resolved — see §16)
+16. **Spruce Line three-tier model** — Design Collections (universal art library), Project Cards (buyer-specific), Style Number Records (production-committed items)
+17. **Spruce Line stage map** — confirmed from Jen's answers; see §16 for full pipeline
+
+---
+
+## 16. Spruce Line — Complete System Requirements
+
+**Source:** Jennifer (Creative Director, Spruce Line), Round 4 — June 9, 2026, 37 questions answered.
+
+"Edge" was the previous brand name for Spruce Line. The two names refer to the same operation.
+
+---
+
+### The Three-Tier Spruce Line Data Model
+
+This is the most important structural finding from Jen's interview. Spruce Line does **not** map cleanly onto the POP Creations two-tier (Project Card + SKU Card) model. It requires a distinct three-tier structure:
+
+**Tier 1 — Design Collection (universal, not buyer-specific)**
+- An art theme or trend presentation available to any account
+- Examples: "Gaming," "Farmhouse," "Cowgirl Country"
+- Contains potentially hundreds of designs; high-res files are NOT sent to Jen until a buyer requests them
+- Does NOT have style numbers — these are raw art assets, not products
+- Organized in the "General Presentations" ClickUp list so Adam can access them without being individually delivered
+- Updated continuously; version date embedded in the title (e.g., "Cowgirl Country - updated 6.11.25")
+- **NOT part of the searchable style-number library** — too early in the lifecycle, no commitment yet
+
+**Tier 2 — Project Card (account-specific)**
+- One project for one buyer for one category of work
+- Title format: ACCOUNT – BUYER – PROJECT TITLE – STATUS NOTES (e.g., "Forman Mills - Jennifer - Wall Art - SENT TO ADAM")
+- Created when a buyer meeting happens or a specific request comes in
+- Carries: all presentations made during the project (PDFs with date in filename), the buyer brief, status, subtasks assigned to individual designers
+- A selections PDF is created after each buyer meeting — this lives attached to the Project Card
+- **Unit of tracking** until a buyer actually commits to buying
+
+**Tier 3 — Style Number Record (execution, production-committed)**
+- Created when a buyer selects specific designs from a presentation and commits to an order (or sample request for accounts like Hobby Lobby)
+- Style number is the permanent identifier for the product; all files searchable by it
+- The searchable library Jen wants = **style-numbered items only**, not the raw art library
+- Task updated with order number(s) once PO is received ("Art Sent for PO" always means a confirmed order)
+
+**Key constraint:** Burlington does not get samples — Jen waits for Anna to finalize selections before assigning style numbers. Hobby Lobby does get samples — style numbers are assigned earlier in the process before PO. The system must support both flows.
+
+---
+
+### Spruce Line Stage Map (confirmed)
+
+Jen's ClickUp board is organized by stage. The confirmed stages, in order:
+
+1. **Send Out Art for PO** — highest priority; these have confirmed buyer interest awaiting final files
+2. **Approved for Future Orders** — buyer approved but no PO yet
+3. **Sample Received** — factory returned sample; under review
+4. **Sample Requested** — files sent to factory for sample production
+5. **Price Requested / Buyer Approving** — in DesignFlow pricing + buyer review
+6. **Initial Approval / Selections Made** — buyer made selections from presentation; selections PDF created
+7. **With Buyer for Approval** — sent to buyer, waiting for response (this is the graveyard stage — products sit here for weeks or months before quarterly cleanup)
+8. **Waiting for Factory** — sent to factory, waiting for response
+9. **In Work** — actively being designed or revised
+10. **Upcoming Projects** — queued, not yet started
+11. **On Hold** — paused by decision
+
+**Correction from prior data:** "Int Approval" in ClickUp = **Initial Approval** (stage 6 above), not "Internal Approval." The stage name was abbreviated, not a separate internal checkpoint.
+
+---
+
+### Roles (Spruce Line)
+
+| Person | Role |
+|---|---|
+| Jen | Creative Director — approves all art/tech packs/samples, handles buyers, manages factory relationships, head product designer and trend collections |
+| Mal | Senior Designer — manages factory relationships, approves files/tech packs/samples, designs art, makes initial tech packs for new concepts |
+| Vie | Designer — AI designs, theme concepts, training on product development |
+| Nat | Junior Designer — designs art, sorts AI art (removes poor quality/obvious mistakes before Jen reviews), preps art files for tech team |
+| Adam | Sales — presents to buyers, approves costing |
+| Albert + China Team | Factory selections, costing, DesignFlow pricing |
+| Yuchen | Sends factory deadline emails that trigger file preparation |
+| Ilona | Follows up on third-party approvals (e.g., Hobby Lobby Ford samples) |
+
+**Who moves tasks forward:** Jen is the primary mover. Individual team members make notes and changes within tasks.
+
+---
+
+### Approval Flow
+
+1. Jen finalizes presentation → Adam presents to buyer
+2. Adam gets buyer's art change requests → communicates back to Jen
+3. Once buyer approves final presentation and commits to order → style number assigned
+4. Design makes costing tech pack → Albert + China Team handle factory and costing → Adam approves costing
+5. Jen + Mal review artwork and tech packs
+6. Jen handles PO review for accuracy (as of June 8, 2026)
+7. Mal handles sample request approvals
+8. Yuchen emails with factory deadline → design team preps files → files sent to production
+
+**No licensor step.** The entire licensor pipeline from POP Creations does not apply.
+
+---
+
+### Briefs
+
+- **General designs:** bi-monthly meetings (one for art, one for product); Jen sends meeting recap with designer assignments; issues discussed on Teams
+- **Account designs:** Jen sends project request via email; placed as subtask on ClickUp assigned to the designer; issues discussed on Teams
+- Briefs are NOT formal written documents — they are verbal + email + recap
+
+---
+
+### Revision Communication
+
+- Small changes: Teams message; designer returns fix via email or Teams
+- Large changes: marked-up file or detailed email; designer returns fix via email or Teams
+- No formal revision tracking in ClickUp today — same gap as POP Creations
+
+---
+
+### Timeline Tracking
+
+- Design team has no built-in deadline tracking
+- Timeline is driven by **Yuchen's factory deadline email** — that is the hard date
+- Burlington often places POs at the last minute, leaving the team short on prep time
+- Sample timelines: Adam sets them if possible; otherwise no formal target
+- **AI query Jen wants most:** "Help build a design calendar based on project timing from previous years" — she wants the system to anticipate busy seasons from history, not just track current deadlines
+
+---
+
+### Cancellation
+
+- Most common reason: buyer does not move forward
+- Products accumulate in "With Buyer for Approval" for weeks or months
+- Jen + Adam review the full list quarterly and remove stalled projects
+- No formal cancel state today — same gap as POP Creations, same fix needed
+
+---
+
+### Reuse and Cross-Line
+
+- Design Collections are reused across all accounts by design — that is their purpose
+- Style-numbered products belong to specific buyers; no reuse tracking needed at that tier (unlike POP Creations where licensor allows multi-buyer reuse)
+- Spruce and licensed lines **share product development but not art**
+
+---
+
+### DesignFlow
+
+DesignFlow is a separate pricing/costing system, distinct from ClickUp, managed by Albert. It is a pain point: when DesignFlow is not working or pricing is not updated, it creates bottlenecks that block buyer approvals. The new system should integrate with or replace DesignFlow's role in the Spruce workflow, or at minimum surface its status.
+
+---
+
+### What Jen's Interview Resolves
+
+| Previously open | Now resolved |
+|---|---|
+| Spruce Line data model (collection vs. SKU) | Three-tier: Design Collections → Project Cards → Style Number Records |
+| "Int Approval" stage meaning | Initial Approval — buyer meeting result, not an internal checkpoint |
+| "Edge Generic" list name | Edge was the prior brand name for Spruce Line |
+| Freelancers Generic list | Failed tracking project — abandoned; freelancers culled to a small working set |
+| General Presentations list | Staging area for Adam to access presentations; not the main pipeline tracker |
+| Whether art library is searchable | No — only style-numbered items are searchable; raw art has no high-res until buyer requests |
+| Seasonal rhythm | Account-specific; Hobby Lobby drives the calendar; Burlington is verbal |
+| Cancellation triggers | Buyer doesn't move forward; quarterly review by Jen + Adam |
+
+---
+
+### Jen's AI Assistant Queries (verbatim)
+
+1. "Track the actual timing to get pricing and samples" — wants visibility into how long each step takes, not just current status
+2. "Status of all sample requests at the factory" — a weekly query she would run every Monday
+3. "Help build a design calendar based on project timing from previous years" — proactive planning, not reactive tracking
+
+---
+
+### Jen's Vision Reaction
+
+> "I'm not sure how we deal with the searchable library. Some of our trend presentations have 100's of designs. We do not get the high res art sent to us until a buyer requests it. I would say the library would contain any item that has been assigned a style number."
+> "A project card would be for an account specific project. Our trend/Art presentations would need to be treated differently — those would be our design collections. They are for use with all accounts. Projects are account specific."
+
+This is the authoritative answer on Spruce Line data model. Design Collections and Project Cards are two distinct object types in the system.
