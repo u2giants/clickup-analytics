@@ -1,9 +1,9 @@
 # Business Intelligence — POP Creations / Spruce Line PM Platform
 
 **Last updated:** 2026-05-28  
-**Sources:** Direct Cloudflare D1 analysis, live D1 webhook events (Mar 30 – May 19, 2026), ClickUp snapshot imports, employee interviews (Jessica Rounds 1 & 3 complete, Liz Round 2 complete; Jen pending), owner context.
+**Sources:** Direct Cloudflare D1 analysis, live D1 webhook events (Mar 30 – May 19, 2026), ClickUp snapshot imports, employee interviews (all complete: Jessica Rounds 1–3, Liz Rounds 2–3, Jen Round 4 — June 9, 2026), owner context.
 
-**Interview synthesis:** See `docs/interview-synthesis.md` for the full translation of all 43 interview answers into concrete system requirements and design decisions. That document supersedes the open questions below for everything covered in Rounds 1–3.
+**Interview synthesis:** See `docs/interview-synthesis.md` for the full, self-contained translation of all 77 interview answers (both business units) into concrete system requirements and design decisions. That document is the authoritative requirements source and supersedes the open questions below.
 
 **Read this with caution:** this document is a synthesis, not the raw source of truth. It is useful, but it does not replace direct D1 inspection. The most important structural fact learned from the live data is that the current ClickUp system mixes **project cards** and **SKU execution tasks**, and that distinction should drive the design of the replacement system.
 
