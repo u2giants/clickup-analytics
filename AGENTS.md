@@ -31,7 +31,7 @@ The `OPENROUTER_MODEL` and `OPENROUTER_URL` constants are hardcoded in `integrat
 ## 3. Repository structure
 
 ```
-u2giants/plane/                          GitHub repo
+u2giants/poppim/                          GitHub repo
 ├── integrations/
 │   └── worker/
 │       ├── src/index.js                 Cloudflare Worker — only runtime custom code
@@ -283,7 +283,7 @@ If `QUERY_SECRET` is not set on the Worker, the `/query` endpoint is open to any
 | `OPENROUTER_API_KEY` | Required for `/query` | OpenRouter API key. `/query` returns 500 if missing. |
 | `QUERY_SECRET` | Optional | Bearer token protecting `/query`. If unset, endpoint is open. |
 
-### GitHub Actions secrets (repo: `u2giants/plane`)
+### GitHub Actions secrets (repo: `u2giants/poppim`)
 
 | Secret | Used by workflows |
 |--------|------------------|
@@ -331,7 +331,7 @@ Auto-triggers on push to `main` when any file under `integrations/worker/**` or 
 
 ```bash
 # Manual trigger
-gh workflow run deploy-worker.yml --repo u2giants/plane
+gh workflow run deploy-worker.yml --repo u2giants/poppim
 
 # Verify live
 curl https://plane-integrations.u2giants.workers.dev/health
@@ -340,7 +340,7 @@ curl https://plane-integrations.u2giants.workers.dev/health
 ### Schema migration
 
 ```bash
-gh workflow run migrate-database.yml --repo u2giants/plane
+gh workflow run migrate-database.yml --repo u2giants/poppim
 ```
 
 Runs `wrangler d1 execute clickup-events --file ../../scripts/migrate_robust_schema.sql --remote`. All statements are idempotent — safe to re-run against a live database.
@@ -349,15 +349,15 @@ Runs `wrangler d1 execute clickup-events --file ../../scripts/migrate_robust_sch
 
 ```bash
 # Stage 1: snapshot ClickUp workspace (nightly 02:00 UTC, or manual)
-gh workflow run clickup-snapshot.yml --repo u2giants/plane -f include_closed=true
+gh workflow run clickup-snapshot.yml --repo u2giants/poppim -f include_closed=true
 
 # Stage 2: load snapshot into D1 (manual only)
-gh workflow run load-snapshot-to-d1.yml --repo u2giants/plane
+gh workflow run load-snapshot-to-d1.yml --repo u2giants/poppim
 # Or for a specific snapshot run:
-gh workflow run load-snapshot-to-d1.yml --repo u2giants/plane -f run_id=<run_id>
+gh workflow run load-snapshot-to-d1.yml --repo u2giants/poppim -f run_id=<run_id>
 
 # Stage 3: rebuild products table (nightly 06:00 UTC, or manual)
-gh workflow run refresh-products.yml --repo u2giants/plane
+gh workflow run refresh-products.yml --repo u2giants/poppim
 ```
 
 Snapshot artifacts are retained for 30 days. The snapshot script supports manifest-based resume — if it fails partway, re-running continues from the last completed list.
@@ -366,10 +366,10 @@ Snapshot artifacts are retained for 30 days. The snapshot script supports manife
 
 ```bash
 # Synthesized backfill (fast, derives from snapshot data)
-gh workflow run backfill-transitions.yml --repo u2giants/plane
+gh workflow run backfill-transitions.yml --repo u2giants/poppim
 
 # Full backfill including ClickUp history API (slow, hours, needs CLICKUP_TOKEN)
-gh workflow run backfill-transitions.yml --repo u2giants/plane -f fetch_history=true
+gh workflow run backfill-transitions.yml --repo u2giants/poppim -f fetch_history=true
 ```
 
 Rows from this workflow have `source='api_history'` and are the only rows with real `from_status` values for most products.
@@ -377,10 +377,10 @@ Rows from this workflow have `source='api_history'` and are the only rows with r
 ### Webhook management
 
 ```bash
-gh workflow run list-webhook.yml --repo u2giants/plane          # view current webhooks
-gh workflow run update-webhook.yml --repo u2giants/plane        # re-enable webhook b114d5...
-gh workflow run update-webhook-events.yml --repo u2giants/plane # update event subscriptions
-gh workflow run create-webhook.yml --repo u2giants/plane        # create new webhook
+gh workflow run list-webhook.yml --repo u2giants/poppim          # view current webhooks
+gh workflow run update-webhook.yml --repo u2giants/poppim        # re-enable webhook b114d5...
+gh workflow run update-webhook-events.yml --repo u2giants/poppim # update event subscriptions
+gh workflow run create-webhook.yml --repo u2giants/poppim        # create new webhook
 ```
 
 After creating a new webhook: copy the secret from run logs → set as `CLICKUP_WEBHOOK_SECRET` GitHub secret → redeploy Worker.

@@ -1,6 +1,6 @@
 # Handoff — Session 2026-05-28/29
 
-**Repo:** `u2giants/plane`
+**Repo:** `u2giants/poppim`
 **Written:** 2026-05-29
 **Replaces:** the 2026-05-18 HANDOFF.md (kept for reference in git history)
 
@@ -260,4 +260,4 @@ Previously discussed moving the interview system to `u2giants/bizanalysis`. That
 | Coolify server | `178.156.180.212:8000` — reserved for the new Fastify API + PostgreSQL |
 | Coolify API auth | `Bearer 1|mlVx9mbwsN1Sga6eLtJEvmPioy6Sra9AnepnCe3K7d0a2927` |
 | ClickUp workspace | Team ID `2298436` |
-| GitHub | `u2giants/plane` — Claude Code sessions run in `/worksp/plane` |
+| GitHub | `u2giants/poppim` — Claude Code sessions run in `/worksp/poppim` |

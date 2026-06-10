@@ -40,7 +40,7 @@ try {
     Write-Host "Secret: $($RESPONSE.secret)" -ForegroundColor Yellow
     Write-Host ""
     Write-Host "IMPORTANT: Save this secret! You need it for CLICKUP_WEBHOOK_SECRET"
-    Write-Host "Run: gh secret set CLICKUP_WEBHOOK_SECRET --repo u2giants/plane --body `"$($RESPONSE.secret)`""
+    Write-Host "Run: gh secret set CLICKUP_WEBHOOK_SECRET --repo u2giants/poppim --body `"$($RESPONSE.secret)`""
 } catch {
     Write-Host "❌ Error: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Response: $($_.ErrorDetails.Message)"

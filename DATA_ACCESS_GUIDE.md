@@ -263,9 +263,9 @@ ORDER BY respondent;
 
 ## 2. GitHub Repository
 
-**Repo:** `u2giants/plane`  
+**Repo:** `u2giants/poppim`  
 **Branch:** `main` (single branch policy)  
-**CLI:** `gh api repos/u2giants/plane/...` or `gh` commands
+**CLI:** `gh api repos/u2giants/poppim/...` or `gh` commands
 
 Key files:
 - `BUSINESS_INTELLIGENCE.md` — full business context and requirements

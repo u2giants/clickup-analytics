@@ -27,11 +27,11 @@ curl -s "http://178.156.180.212:8000/api/v1/applications" \
 Server UUID: `onwp0kd7w1w74w9yeotnoihp`
 
 ### GitHub CLI
-Authenticated as `u2giants`. Repo: `u2giants/plane`.
+Authenticated as `u2giants`. Repo: `u2giants/poppim`.
 ```bash
-gh workflow run deploy-worker.yml --repo u2giants/plane
-gh run list --repo u2giants/plane --limit 5
-gh secret set SECRET_NAME --repo u2giants/plane --body "value"
+gh workflow run deploy-worker.yml --repo u2giants/poppim
+gh run list --repo u2giants/poppim --limit 5
+gh secret set SECRET_NAME --repo u2giants/poppim --body "value"
 ```
 
 ### Browser automation

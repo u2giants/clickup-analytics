@@ -334,7 +334,7 @@ Seeded in the SQL migration. Used by `build_products_table.py` to classify check
 | ClickUp webhook ID | `b114d599-aa9a-4069-b08f-a4bf0ac4fe20` |
 | OpenRouter model | `deepseek/deepseek-v3.2` |
 | OpenRouter endpoint | `https://openrouter.ai/api/v1/chat/completions` |
-| GitHub repo | `u2giants/plane` |
+| GitHub repo | `u2giants/poppim` |
 | Coolify base URL | `http://178.156.180.212:8000/api/v1` |
 | Coolify server UUID | `onwp0kd7w1w74w9yeotnoihp` |
 

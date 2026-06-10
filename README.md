@@ -40,19 +40,19 @@ GitHub Actions (nightly)
 
 ```bash
 # Deploy worker manually
-gh workflow run deploy-worker.yml --repo u2giants/plane
+gh workflow run deploy-worker.yml --repo u2giants/poppim
 
 # Run full ClickUp snapshot
-gh workflow run clickup-snapshot.yml --repo u2giants/plane
+gh workflow run clickup-snapshot.yml --repo u2giants/poppim
 
 # Load latest snapshot into D1 + rebuild products table
-gh workflow run load-snapshot-to-d1.yml --repo u2giants/plane
+gh workflow run load-snapshot-to-d1.yml --repo u2giants/poppim
 
 # Rebuild products table only (no new snapshot needed)
-gh workflow run refresh-products.yml --repo u2giants/plane
+gh workflow run refresh-products.yml --repo u2giants/poppim
 
 # Apply schema migration
-gh workflow run migrate-database.yml --repo u2giants/plane
+gh workflow run migrate-database.yml --repo u2giants/poppim
 
 # Health check
 curl https://plane-integrations.u2giants.workers.dev/health
@@ -64,7 +64,7 @@ curl -X POST https://plane-integrations.u2giants.workers.dev/query \
   -d '{"question": "Which licensors have the most overdue products?"}'
 
 # Recent workflow runs
-gh run list --repo u2giants/plane --limit 10
+gh run list --repo u2giants/poppim --limit 10
 ```
 
 ---
@@ -72,7 +72,7 @@ gh run list --repo u2giants/plane --limit 10
 ## Repository structure
 
 ```
-u2giants/plane/
+u2giants/poppim/
 ├── integrations/worker/
 │   ├── src/index.js            Worker: webhook receiver, /query, /interview
 │   └── wrangler.toml           Worker config and D1 binding

@@ -85,7 +85,7 @@ No `[vars]` section exists — runtime variables are all secrets, not plaintext 
 
 ## GitHub Actions secrets
 
-All workflows read credentials from repository secrets at `u2giants/plane`. Set them at:
+All workflows read credentials from repository secrets at `u2giants/poppim`. Set them at:
 **GitHub → repo Settings → Secrets and variables → Actions → Repository secrets**
 
 | Secret | Sensitive | Used by workflows | Purpose |
@@ -143,7 +143,7 @@ Registered in the `RESPONDENTS` object in `integrations/worker/src/index.js`. Th
 | `liz` | Liz | `#0ca678` (teal) | `#e6fcf5` |
 | `jen` | Jen | `#e67700` (orange) | `#fff4e6` |
 
-To add a respondent: add an entry to `RESPONDENTS`, then run `gh workflow run deploy-worker.yml --repo u2giants/plane`. Also insert their questions into `interview_questions` in D1 with `respondent = '<key>'`.
+To add a respondent: add an entry to `RESPONDENTS`, then run `gh workflow run deploy-worker.yml --repo u2giants/poppim`. Also insert their questions into `interview_questions` in D1 with `respondent = '<key>'`.
 
 ---
 

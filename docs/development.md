@@ -153,7 +153,7 @@ The schema is defined in `scripts/migrate_robust_schema.sql`. All statements use
 1. Add the DDL to `scripts/migrate_robust_schema.sql`. For new columns on existing tables, use `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` (SQLite supports this since 3.37).
 2. Apply via GitHub Actions (recommended):
    ```bash
-   gh workflow run migrate-database.yml --repo u2giants/plane
+   gh workflow run migrate-database.yml --repo u2giants/poppim
    ```
    The workflow runs `wrangler d1 execute clickup-events --file ../../scripts/migrate_robust_schema.sql --remote` and then prints all tables and views to confirm.
 
@@ -184,7 +184,7 @@ Secret steps are skipped (not failed) if the corresponding GitHub secret is not 
 
 To trigger manually without a code push:
 ```bash
-gh workflow run deploy-worker.yml --repo u2giants/plane
+gh workflow run deploy-worker.yml --repo u2giants/poppim
 ```
 
 ### From local (when you need it immediately)
@@ -219,7 +219,7 @@ Reads from all task/checklist/comment tables in D1. Rebuilds `products` and `pro
 
 ```bash
 # Download a specific snapshot artifact:
-gh run download <run_id> --repo u2giants/plane --dir scripts/snapshot_output/
+gh run download <run_id> --repo u2giants/poppim --dir scripts/snapshot_output/
 # Load it:
 cd scripts
 python load_snapshot_to_d1.py

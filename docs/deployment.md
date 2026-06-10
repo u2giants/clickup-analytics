@@ -11,7 +11,7 @@ This document covers all deployed infrastructure and the workflows that operate 
 | Cloudflare Worker | Cloudflare Workers | `plane-integrations` — `https://plane-integrations.u2giants.workers.dev` |
 | D1 database | Cloudflare D1 | `clickup-events` — ID `c37aeb36-e16e-416b-b699-c910f6f8dc10` |
 | Plane app | Coolify (VPS) | `http://178.156.180.212:8000` |
-| GitHub Actions | GitHub | `u2giants/plane` |
+| GitHub Actions | GitHub | `u2giants/poppim` |
 
 ---
 
@@ -67,7 +67,7 @@ The health check will cause the workflow to fail (exit 1) if the Worker does not
 ### Manual deployment
 
 ```bash
-gh workflow run deploy-worker.yml --repo u2giants/plane
+gh workflow run deploy-worker.yml --repo u2giants/poppim
 ```
 
 ### Verify the live Worker
@@ -120,7 +120,7 @@ Schema is defined in `scripts/migrate_robust_schema.sql`. All statements use `CR
 ### Apply via GitHub Actions
 
 ```bash
-gh workflow run migrate-database.yml --repo u2giants/plane
+gh workflow run migrate-database.yml --repo u2giants/poppim
 ```
 
 The workflow runs:
@@ -163,9 +163,9 @@ The data refresh pipeline has three independent stages. Run them in order for a 
 
 **Manual trigger:**
 ```bash
-gh workflow run clickup-snapshot.yml --repo u2giants/plane
+gh workflow run clickup-snapshot.yml --repo u2giants/poppim
 # Force-include closed tasks:
-gh workflow run clickup-snapshot.yml --repo u2giants/plane -f include_closed=true
+gh workflow run clickup-snapshot.yml --repo u2giants/poppim -f include_closed=true
 ```
 
 **What it does:** calls the ClickUp REST API for all tasks, lists, spaces, users, comments, and time entries. Writes gzip-compressed JSON files to `snapshot_output/`. Uploads as a GitHub Actions artifact retained for 30 days. Supports manifest-based resume — a failed run that is re-triggered will continue from the last completed list, not from the beginning.
@@ -178,17 +178,17 @@ gh workflow run clickup-snapshot.yml --repo u2giants/plane -f include_closed=tru
 
 ```bash
 # Load the latest successful snapshot
-gh workflow run load-snapshot-to-d1.yml --repo u2giants/plane
+gh workflow run load-snapshot-to-d1.yml --repo u2giants/poppim
 
 # Load a specific snapshot by run ID
-gh workflow run load-snapshot-to-d1.yml --repo u2giants/plane -f run_id=12345678
+gh workflow run load-snapshot-to-d1.yml --repo u2giants/poppim -f run_id=12345678
 ```
 
 **What it does:** downloads the snapshot artifact, upserts all rows into `tasks`, `lists`, `spaces`, `users`, etc. via `load_snapshot_to_d1.py`, then runs `build_products_table.py` to rebuild `products`.
 
 To find a specific run ID:
 ```bash
-gh run list --repo u2giants/plane --workflow clickup-snapshot.yml --limit 10
+gh run list --repo u2giants/poppim --workflow clickup-snapshot.yml --limit 10
 ```
 
 ### Stage 3 — Rebuild products table
@@ -197,7 +197,7 @@ gh run list --repo u2giants/plane --workflow clickup-snapshot.yml --limit 10
 
 **Manual trigger:**
 ```bash
-gh workflow run refresh-products.yml --repo u2giants/plane
+gh workflow run refresh-products.yml --repo u2giants/poppim
 ```
 
 **What it does:** runs `build_products_table.py` only — it does not download a new snapshot. Use this when:
@@ -215,16 +215,16 @@ Status transitions are written in real time by the webhook. For historical data 
 
 ```bash
 # Fast: derive transitions from snapshot data (no ClickUp API calls)
-gh workflow run backfill-transitions.yml --repo u2giants/plane
+gh workflow run backfill-transitions.yml --repo u2giants/poppim
 
 # Slow (hours): include the ClickUp /task/{id}/history API for real from→to values
-gh workflow run backfill-transitions.yml --repo u2giants/plane -f fetch_history=true
+gh workflow run backfill-transitions.yml --repo u2giants/poppim -f fetch_history=true
 
 # Scope to one list only
-gh workflow run backfill-transitions.yml --repo u2giants/plane -f list_id=13194624
+gh workflow run backfill-transitions.yml --repo u2giants/poppim -f list_id=13194624
 
 # Specific snapshot run + history
-gh workflow run backfill-transitions.yml --repo u2giants/plane \
+gh workflow run backfill-transitions.yml --repo u2giants/poppim \
   -f fetch_history=true -f run_id=12345678
 ```
 
@@ -241,21 +241,21 @@ The active webhook ID is `b114d599-aa9a-4069-b08f-a4bf0ac4fe20`. It is hardcoded
 ### List registered webhooks
 
 ```bash
-gh workflow run list-webhook.yml --repo u2giants/plane
-gh run list --repo u2giants/plane --workflow list-webhook.yml --limit 1
+gh workflow run list-webhook.yml --repo u2giants/poppim
+gh run list --repo u2giants/poppim --workflow list-webhook.yml --limit 1
 # Then view the log:
-gh run view --repo u2giants/plane --log <run-id>
+gh run view --repo u2giants/poppim --log <run-id>
 ```
 
 ### Create a new webhook (if the existing one is gone)
 
 ```bash
-gh workflow run create-webhook.yml --repo u2giants/plane
+gh workflow run create-webhook.yml --repo u2giants/poppim
 ```
 
 After the run completes, retrieve the webhook secret from the run log:
 ```bash
-gh run view --repo u2giants/plane --log <run-id> | grep "Webhook Secret"
+gh run view --repo u2giants/poppim --log <run-id> | grep "Webhook Secret"
 ```
 
 Then:
@@ -263,13 +263,13 @@ Then:
 2. Update the hardcoded webhook ID in `update-webhook.yml` and `update-webhook-events.yml` to the new ID.
 3. Redeploy the Worker so the new secret is pushed to Cloudflare:
    ```bash
-   gh workflow run deploy-worker.yml --repo u2giants/plane
+   gh workflow run deploy-worker.yml --repo u2giants/poppim
    ```
 
 ### Re-enable a suspended webhook
 
 ```bash
-gh workflow run update-webhook.yml --repo u2giants/plane
+gh workflow run update-webhook.yml --repo u2giants/poppim
 ```
 
 ClickUp suspends webhooks after repeated delivery failures. This workflow PUTs the webhook back to `"status": "active"` with the full event list.
@@ -277,7 +277,7 @@ ClickUp suspends webhooks after repeated delivery failures. This workflow PUTs t
 ### Update event subscriptions
 
 ```bash
-gh workflow run update-webhook-events.yml --repo u2giants/plane
+gh workflow run update-webhook-events.yml --repo u2giants/poppim
 ```
 
 The current subscription covers 28 event types: 22 task/list/folder/space events + 6 goal/key-result events. Edit the `events` array in `update-webhook-events.yml` before running to change subscriptions.
@@ -293,7 +293,7 @@ These workflows were run during initial setup. Re-run only if rebuilding from sc
 Maps ClickUp list IDs to their parent space names. Required for the Worker to derive `space_name` from webhook events (ClickUp does not include `space_id` in webhook payloads).
 
 ```bash
-gh workflow run populate-list-space-map.yml --repo u2giants/plane
+gh workflow run populate-list-space-map.yml --repo u2giants/poppim
 ```
 
 Reads from `scripts/populate_list_space_map.sql` and runs `wrangler d1 execute` directly.
@@ -302,9 +302,9 @@ Reads from `scripts/populate_list_space_map.sql` and runs `wrangler d1 execute` 
 
 ## GitHub secrets required
 
-All secrets are stored at `u2giants/plane` repository level. Set or update via:
+All secrets are stored at `u2giants/poppim` repository level. Set or update via:
 ```bash
-gh secret set SECRET_NAME --repo u2giants/plane --body "value"
+gh secret set SECRET_NAME --repo u2giants/poppim --body "value"
 ```
 
 | Secret | Required by | Notes |
@@ -393,7 +393,7 @@ The following operations require manual steps and have no automated workflow:
 
 8. **Downloading snapshot artifacts for local analysis.** Must be done manually:
    ```bash
-   gh run download <run-id> --repo u2giants/plane --dir scripts/snapshot_output/
+   gh run download <run-id> --repo u2giants/poppim --dir scripts/snapshot_output/
    ```
 
 9. **Rotating secrets.** Generate new values externally, update via `gh secret set`, then redeploy the Worker (`gh workflow run deploy-worker.yml`) so the new secrets are pushed to Cloudflare.

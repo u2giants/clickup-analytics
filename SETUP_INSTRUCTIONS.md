@@ -61,12 +61,12 @@ Or execute via Cloudflare Dashboard:
 
 The snapshot was triggered via GitHub Actions. Check status:
 ```bash
-gh run list --repo u2giants/plane --limit 3
+gh run list --repo u2giants/poppim --limit 3
 ```
 
 Download results when complete:
 ```bash
-gh run download latest --repo u2giants/plane --name "clickup-snapshot-*"
+gh run download latest --repo u2giants/poppim --name "clickup-snapshot-*"
 ```
 
 ---

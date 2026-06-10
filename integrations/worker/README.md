@@ -34,5 +34,5 @@ The Worker accesses D1 as `env.DB` (binding name `DB`, database `clickup-events`
 ```bash
 # Automatic: push any change to integrations/worker/** on main
 # Manual:
-gh workflow run deploy-worker.yml --repo u2giants/plane
+gh workflow run deploy-worker.yml --repo u2giants/poppim
 ```

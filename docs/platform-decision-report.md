@@ -24,7 +24,7 @@ We need a project-management system for our two product lines, we already run a 
 
 ## 1. Background & how we got here
 
-The company was running employee interviews to design a replacement for ClickUp. With all interviews complete (Jessica/PM and Liz/Creative Director for the licensed line; Jen/Creative Director for the generic line), we synthesized requirements (`business-process.md`, `pm-system-design.md`). The original plan assumed building on **Plane** (this repo, `u2giants/plane`, with a deployed Plane instance and an analytics layer). Evaluating Plane against our requirements revealed it could not meet them without forking and paying — which opened a broader question: **what platform should we actually build on**, given we also run a forked Twenty CRM and a custom DAM, and given our real goal is **one source of truth** across all of it.
+The company was running employee interviews to design a replacement for ClickUp. With all interviews complete (Jessica/PM and Liz/Creative Director for the licensed line; Jen/Creative Director for the generic line), we synthesized requirements (`business-process.md`, `pm-system-design.md`). The original plan assumed building on **Plane** (this repo, `u2giants/poppim`, with a deployed Plane instance and an analytics layer). Evaluating Plane against our requirements revealed it could not meet them without forking and paying — which opened a broader question: **what platform should we actually build on**, given we also run a forked Twenty CRM and a custom DAM, and given our real goal is **one source of truth** across all of it.
 
 ---
 
