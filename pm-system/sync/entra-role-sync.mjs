@@ -5,15 +5,15 @@
 // Direction: Directus role  ->  Entra group membership (one-way, Directus authoritative).
 // Only Microsoft-provisioned Directus users (provider = 'microsoft') are managed;
 // local/script users (e.g. svc@popcre.com, provider 'default') are ignored.
-// The five "POP PIM ·" groups are OWNED by this sync: a member of one of those
+// The six "POP PIM ·" groups are OWNED by this sync: a member of one of those
 // groups who has no matching Directus role is REMOVED.
 //
 // SAFETY: dry-run by default. It only writes to Entra when SYNC_APPLY=1.
 //
-// Usage:
-//   set -a; source /home/ai/.poppim-deploy.env; set +a
-//   DX_URL=https://pm.designflow.app node pm-system/sync/entra-role-sync.mjs           # dry run (prints plan)
-//   DX_URL=https://pm.designflow.app SYNC_APPLY=1 node pm-system/sync/entra-role-sync.mjs   # apply
+// Usage (POPPIM_ENV_FILE loads secrets directly; no shell `source` needed):
+//   POPPIM_ENV_FILE=/home/ai/.directus-deploy.env node pm-system/sync/entra-role-sync.mjs            # dry run
+//   POPPIM_ENV_FILE=/home/ai/.directus-deploy.env SYNC_APPLY=1 node pm-system/sync/entra-role-sync.mjs   # apply
+// Scheduled hourly by the host systemd timer directus-entra-sync.timer.
 //
 // Env required: DX_URL, DX_ADMIN_EMAIL, DX_ADMIN_PASSWORD (svc admin),
 //               GRAPH_TENANT_ID, GRAPH_SYNC_CLIENT_ID, GRAPH_SYNC_CLIENT_SECRET.
@@ -32,7 +32,7 @@ if (process.env.POPPIM_ENV_FILE) {
   }
 }
 
-const DX_URL = process.env.DX_URL || 'https://pm.designflow.app';
+const DX_URL = process.env.DX_URL || 'https://data.designflow.app';
 const DX_EMAIL = process.env.DX_ADMIN_EMAIL;
 const DX_PASSWORD = process.env.DX_ADMIN_PASSWORD;
 const TENANT = process.env.GRAPH_TENANT_ID;

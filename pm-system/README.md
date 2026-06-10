@@ -29,7 +29,7 @@ It implements the schema in `../docs/data-model.md` and the approach in `../docs
 3. Deploy `docker-compose.yml` on Coolify (it'll manage Postgres, Caddy/SSL).
 4. Apply the schema + config:
    ```bash
-   DX_URL=https://pm.designflow.app DX_ADMIN_EMAIL=you@popcre.com DX_ADMIN_PASSWORD=*** node apply-schema.mjs
+   DX_URL=https://data.designflow.app DX_ADMIN_EMAIL=you@popcre.com DX_ADMIN_PASSWORD=*** node apply-schema.mjs
    ```
 5. **Restart the Directus service** (the event-triggered Flow only registers at boot).
 6. (Optional) verify: `DX_URL=... DX_ADMIN_EMAIL=... DX_ADMIN_PASSWORD=... node seed-and-verify.mjs` → expect `✅ ALL VERIFICATIONS PASSED`.

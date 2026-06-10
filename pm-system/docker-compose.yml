@@ -1,23 +1,24 @@
-# Directus PM system — AUTHORITATIVE copy of the deployed Coolify service.
-# Deployed as Coolify service "poppim" (uuid nzli85mk3luzb6u7cnq5fidu) on server onwp0kd7w1w74w9yeotnoihp.
-# Live at https://pm.designflow.app. All ${...} values are set as RUNTIME env in Coolify (never in this repo).
-# Coolify magic vars: SERVICE_FQDN_POPPIMAPP_8055 binds the public domain to container port 8055.
-# Custom domain is also stored in Coolify DB service_applications.fqdn (see AGENTS.md §11).
+# Shared Directus backend for the POP super-app (PIM + CRM + DAM).
+# AUTHORITATIVE copy of the deployed Coolify service "directus" (uuid nzli85mk3luzb6u7cnq5fidu) on server onwp0kd7w1w74w9yeotnoihp.
+# Live at https://data.designflow.app (pm.designflow.app kept as a grace-period alias).
+# All ${...} values are set as RUNTIME env in Coolify (never in this repo).
+# Coolify magic var SERVICE_FQDN_DIRECTUSAPP_8055 + Coolify DB service_applications.fqdn bind the domain (see AGENTS.md §11).
+# Volume KEYS are directus-pgdata / directus-extensions (renamed from poppim-* via offline volume copy on 2026-06-10).
 # To change the schema: run pm-system/apply-schema.mjs against the instance, then restart the service.
 services:
-  poppim-app:
+  directus-app:
     image: directus/directus:11
     expose:
       - "8055"
     environment:
-      SERVICE_FQDN_POPPIMAPP_8055: pm.designflow.app
+      SERVICE_FQDN_DIRECTUSAPP_8055: data.designflow.app
       KEY: ${DX_KEY}
       SECRET: ${DX_SECRET}
-      PUBLIC_URL: https://pm.designflow.app
+      PUBLIC_URL: https://data.designflow.app
       ADMIN_EMAIL: ${DX_ADMIN_EMAIL}
       ADMIN_PASSWORD: ${DX_ADMIN_PASSWORD}
       DB_CLIENT: pg
-      DB_HOST: poppim-db
+      DB_HOST: directus-db
       DB_PORT: "5432"
       DB_DATABASE: directus
       DB_USER: directus
@@ -36,17 +37,17 @@ services:
       WEBSOCKETS_ENABLED: "true"
       TELEMETRY: "false"
     volumes:
-      - poppim-extensions:/directus/extensions   # persists Marketplace-installed extensions across redeploys (e.g. advanced-kanban-layout)
+      - directus-extensions:/directus/extensions   # persists Marketplace-installed extensions (e.g. advanced-kanban-layout)
     depends_on:
-      - poppim-db
-  poppim-db:
+      - directus-db
+  directus-db:
     image: postgres:16-alpine
     environment:
       POSTGRES_USER: directus
       POSTGRES_PASSWORD: ${DX_DB_PASSWORD}
       POSTGRES_DB: directus
     volumes:
-      - poppim-pgdata:/var/lib/postgresql/data
+      - directus-pgdata:/var/lib/postgresql/data
 volumes:
-  poppim-pgdata:
-  poppim-extensions:
+  directus-pgdata:
+  directus-extensions:
