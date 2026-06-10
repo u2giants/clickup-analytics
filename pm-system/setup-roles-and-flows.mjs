@@ -67,6 +67,7 @@ TOKEN = (await api('POST', '/auth/login', { email: ADMIN_EMAIL, password: ADMIN_
 await makeRole('Sales', 'Sees pricing; manages offers & products', { pricing: true, write: ['project', 'product', 'design'] });
 await makeRole('Licensing', 'Manages licensor submissions (Brand Assurance, PI)', { pricing: true, write: ['product'] });
 await makeRole('Viewer', 'Read-only, no pricing', { pricing: false, write: null });
+await makeRole('Factory', 'External manufacturer: read-only, no pricing (per-factory row scoping TBD)', { pricing: false, write: null });
 await setupNotifyFlow();
 const roles = await api('GET', '/roles?fields=name&limit=20');
 console.log('ROLES:', roles.map(r => r.name).join(', '));

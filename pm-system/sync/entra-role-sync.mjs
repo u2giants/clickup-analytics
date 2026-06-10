@@ -18,6 +18,20 @@
 // Env required: DX_URL, DX_ADMIN_EMAIL, DX_ADMIN_PASSWORD (svc admin),
 //               GRAPH_TENANT_ID, GRAPH_SYNC_CLIENT_ID, GRAPH_SYNC_CLIENT_SECRET.
 
+// Optional: load secrets from an env file (POPPIM_ENV_FILE) so the scheduler
+// doesn't depend on fragile shell `source` of values containing special chars.
+import { readFileSync } from 'node:fs';
+if (process.env.POPPIM_ENV_FILE) {
+  for (const line of readFileSync(process.env.POPPIM_ENV_FILE, 'utf8').split('\n')) {
+    const s = line.trim();
+    if (!s || s.startsWith('#') || !s.includes('=')) continue;
+    const i = s.indexOf('='); const k = s.slice(0, i).trim();
+    let v = s.slice(i + 1).trim();
+    if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) v = v.slice(1, -1);
+    if (process.env[k] === undefined) process.env[k] = v;
+  }
+}
+
 const DX_URL = process.env.DX_URL || 'https://pm.designflow.app';
 const DX_EMAIL = process.env.DX_ADMIN_EMAIL;
 const DX_PASSWORD = process.env.DX_ADMIN_PASSWORD;
@@ -33,6 +47,7 @@ const ROLE_TO_GROUP = {
   Licensing: 'df5f7693-1dbc-4b12-9dae-b18570d593bb',
   Designer: '9d977745-d86c-4950-866d-211e0dd3fac7',
   Viewer: '6ab28eb2-3c4b-4c81-b746-2ad63def306d',
+  Factory: '995e1908-912d-4ada-bd76-5485183011f9',
 };
 
 for (const [k, v] of Object.entries({ DX_EMAIL, DX_PASSWORD, TENANT, CLIENT_ID, CLIENT_SECRET })) {
