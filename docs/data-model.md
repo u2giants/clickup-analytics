@@ -1,0 +1,280 @@
+# Unified Data Model — Phase 1 (Directus)
+
+**Date:** 2026-06-09
+**Scope:** the concrete Directus schema for the **Phase-1 PM system** (POP Creations + Spruce Line), **designed from day one to also host CRM and DAM entities** (Phases 2–3) so the three domains become one relational graph.
+**Companions:** `business-process.md` (the domain), `directus-execution-plan.md` (the how), `pm-system-design.md` (requirements).
+**Audience:** the AI agent that will create these collections in Directus Data Studio.
+
+> Everything here is **Directus collections + fields + relations + a status field + policies + Flows** — i.e., **configuration**, not custom code. Build it in Data Studio. No front-end required to use it.
+
+---
+
+## 1. Design principles
+
+1. **One `product` table for both lines.** POP's "SKU" and Spruce's "Style#" are the same kind of thing — a production-committed item with a code, a pipeline stage, and a project. A `business_unit` field distinguishes them; line-specific fields (licensor, Brand Assurance) are simply null for Spruce.
+2. **Unify POP's 2-tier and Spruce's 3-tier hierarchy.** POP = `project → product`. Spruce = `design_collection → project → product`. The optional `design_collection` tier exists for Spruce; POP products just leave it null.
+3. **The design library is a first-class collection (`design`)**, independent of any presentation — picked or not. This is the #1 requested feature and the seam to the DAM (`design.asset → asset`).
+4. **SLA targets are data, not hardcode.** `product_type` carries the per-type stage durations; `stage` carries order/category. Time-in-stage and "on-track" are computed from `stage_history` + these tables.
+5. **Field-level visibility is a policy, not UI logic.** Pricing fields are hidden from the Designer role by a Directus policy; the API enforces it everywhere.
+6. **Forward-compatible relations.** `retailer`/`buyer`/`licensor`/`factory` are real collections now so that CRM (Phase 2) attaches to them, and `design.asset`/`product.asset` point at the future DAM `asset` collection (Phase 3).
+
+---
+
+## 2. Entity overview
+
+```
+                 ┌──────────────┐
+                 │ design_      │  (Spruce only; optional tier)
+                 │ collection   │
+                 └──────┬───────┘
+                        │ 1:N
+   ┌────────────┐       ▼            ┌───────────┐     ┌──────────┐
+   │ retailer   │◄─┐ ┌─────────┐     │ licensor  │◄────│ property │
+   └────────────┘  └─│ project │     └───────────┘ 1:N └──────────┘
+        ▲ 1:N        │ (offer) │          ▲                  ▲
+   ┌────────────┐    └────┬────┘          │                  │
+   │ buyer      │◄────────┤ 1:N           │                  │
+   └────────────┘         ▼               │                  │
+                     ┌─────────┐  N:1     │                  │
+        ┌───────────►│ product │──────────┘ (licensor)       │
+        │            │ (SKU /  │──────────────────────────────┘ (property)
+        │ N:1        │  Style#)│  N:1 ┌──────────┐  N:1 ┌──────────────┐
+        │ (design)   └──┬───┬──┘─────►│ factory  │      │ product_type │
+   ┌─────────┐          │   │         └──────────┘      │ (+SLA times) │
+   │ design  │──────────┘   │ 1:N                       └──────────────┘
+   │(library)│              ▼                                  ▲
+   └────┬────┘        ┌──────────────┐  ┌──────────┐           │
+        │ N:1         │ stage_history│  │  order   │   ┌──────┐│
+        ▼             │  (SLA ledger)│  │(PO hist.)│   │ stage││
+   ┌──────────┐       └──────────────┘  └──────────┘   │ defs ├┘
+   │  asset   │  ◄── DAM seam (Phase 3)                 └──────┘
+   │ (Phase 3)│
+   └──────────┘
+```
+
+`season` is referenced by `project` (and filterable on `design`). `business_unit` is an enum field on `project`, `product`, `design`, and `design_collection`.
+
+---
+
+## 3. Collections
+
+Notation: **PK** id is Directus's default UUID. Types are Directus field types. "🔒pricing" marks fields hidden from the Designer role (§7). "POP"/"Spruce" marks line-specific fields.
+
+### 3.1 Reference / lookup collections
+
+**`retailer`** — a store (also the future CRM "company")
+| field | type | notes |
+|---|---|---|
+| name | string | Burlington, Hobby Lobby, Ross, Ollies… |
+| aliases | json/string | alternate names (migration aid) |
+| resale_restriction | boolean | some buyers prohibit reselling what they bought |
+| notes | text | |
+
+**`buyer`** — a named individual at a retailer (future CRM "contact")
+| field | type | notes |
+|---|---|---|
+| name | string | e.g., "Anna", "Kyle (Hobby Lobby)" |
+| retailer | M2O → retailer | |
+| email / phone | string | (used in Phase 2 CRM) |
+| samples_required | boolean | Hobby Lobby = true, Burlington = false (Spruce flow split) |
+
+**`licensor`** (POP) — Disney, Marvel, etc.
+| field | type | notes |
+|---|---|---|
+| name | string | |
+| turnaround_days_min / _max | integer | from the SLA tables (Disney 1–3, One Piece 7–15…) |
+| requires_pi | boolean | drives PI-status default |
+| prohibits_resale | boolean | per-licensor reuse rule |
+
+**`property`** (POP) — a franchise within a licensor
+| field | type | notes |
+|---|---|---|
+| name | string | "Mickey Mouse" vs "Mickey and Friends" |
+| licensor | M2O → licensor | |
+
+**`factory`**
+| field | type | notes |
+|---|---|---|
+| name | string | |
+| capabilities | text | known constraints (die lines, color count, technique) |
+| china_team_contact | string | |
+
+**`product_type`** — carries the **SLA design-time targets** (minutes)
+| field | type | notes |
+|---|---|---|
+| name | string | Stretched/Box, Framed, Plaque, Floor Coverings, Garden… |
+| sla_brief / sla_design / sla_art_file / sla_licensing_sheet / sla_revisions / sla_techpack | integer | minutes (from BUSINESS_INTELLIGENCE.md §10) |
+
+**`season`**
+| field | type | notes |
+|---|---|---|
+| name | string | Valentine's, Easter, Graduation, Back to School, Harvest, Halloween, Christmas, Everyday |
+| year | integer | |
+| business_unit | enum | POP seasons are fixed; Spruce is account-driven (still useful to tag) |
+
+**`stage`** — pipeline stage definitions (one row per stage, per line)
+| field | type | notes |
+|---|---|---|
+| name | string | "Licensing sheet review", "With Buyer for Approval"… |
+| business_unit | enum | POP \| Spruce |
+| order | integer | 1..17 (POP) / 1..11 (Spruce) |
+| category | enum | ideation \| design \| review \| submission \| sampling \| approved \| cancelled |
+| is_gate | boolean | e.g., Creative Director review |
+
+*(Rationale for a `stage` collection rather than a plain select: it lets the two lines have different stage sets, attaches order/category/SLA context, and still drives a Kanban board by grouping `product` on `stage`. For the **first spike pass**, a simple single-select `stage` field on `product` is fine; promote to this collection when modeling both lines.)*
+
+### 3.2 Core PM collections
+
+**`design_collection`** (Spruce only; the account-agnostic trend/art theme)
+| field | type | notes |
+|---|---|---|
+| name | string | "Gaming", "Cowgirl Country" |
+| format | string | Wall Art, Floor Coverings, Storage… |
+| theme | string | the specific theme |
+| business_unit | enum | always Spruce |
+| version_date | date | "updated 6.11.25" |
+| account_specific_for | M2O → retailer (nullable) | most are null; storage + Hobby Lobby are account-specific |
+
+**`project`** — an offer (POP) / an account-specific project (Spruce)
+| field | type | notes |
+|---|---|---|
+| title | string | "Julie Greer @ Burlington — Valentines 2027" / "Forman Mills - Jennifer - Wall Art" |
+| business_unit | enum | POP \| Spruce |
+| retailer | M2O → retailer | |
+| buyer | M2O → buyer | |
+| season | M2O → season | |
+| design_collection | M2O → design_collection (nullable) | Spruce: which collection this offer drew from |
+| licensors | M2M → licensor (POP) | |
+| properties | M2M → property (POP) | |
+| product_types_requested | M2M → product_type | |
+| on_shelf_date | date | when it must be in stores |
+| pps_requested_date | date | POP: when the buyer wants the sample (often earlier) |
+| restrictions | text | style-guide dates, buyer rules |
+| brief | text/rich | the creative brief |
+| status | enum | active \| won \| lost \| abandoned |
+| selections_pdf | file (asset) | Spruce selections doc |
+
+**`design`** — the **design library** (every preliminary design, picked or not; for Spruce, style-numbered art)
+| field | type | notes |
+|---|---|---|
+| name | string | |
+| business_unit | enum | |
+| licensor | M2O → licensor (POP) | |
+| property | M2O → property (POP) | |
+| theme | string (Spruce) | |
+| product_type | M2O → product_type | |
+| season | M2O → season | |
+| first_offered_to | M2O → retailer | where it first appeared |
+| status | enum | unpicked \| picked \| offered_to_multiple |
+| projects | M2M → project | every project it appeared in (multi-buyer detection seam) |
+| asset | M2O → asset (Phase 3, nullable) | thumbnail / full file in the DAM |
+| nas_path | string | interim until DAM seam exists |
+| thumbnail_url | string | interim (DAM DO-Spaces thumbnail) |
+
+**`product`** — the executable item: **SKU (POP)** / **Style# (Spruce)**
+| field | type | notes |
+|---|---|---|
+| code | string (unique, read-only after create) | SKU code / style number — **immutable** (enforce via field permission: create-only) |
+| name | string | description + dimensions |
+| business_unit | enum | POP \| Spruce |
+| project | M2O → project | **required** (every product belongs to an offer) |
+| design | M2O → design | the design it was built from |
+| product_type | M2O → product_type | |
+| licensor | M2O → licensor (POP) | |
+| property | M2O → property (POP) | |
+| factory | M2O → factory | |
+| stage | M2O → stage (or single-select) | current pipeline position |
+| put_up | string | packaging format |
+| on_shelf_date | date | (inherited/echoed from project) |
+| pps_requested_date | date (POP) | |
+| **cost_target** | decimal | 🔒pricing — **hidden from Designer role** |
+| **quoted_cost** | decimal | 🔒pricing |
+| brand_assurance_number | string (POP) | required once at "Concept submitted"; reused at production |
+| brand_assurance_pdf | file (asset) (POP) | |
+| pi_status | enum (POP) | Required \| Not Required \| Completed (default "Not Required") |
+| closure_reason | enum | (null while open) cost \| licensing \| sampling \| buyer \| abandoned \| completed |
+| created_at / updated_at | timestamp | Directus built-ins (cycle age) |
+
+**`order`** — purchase-order history (supports multi-buyer reuse + order history)
+| field | type | notes |
+|---|---|---|
+| product | M2O → product | |
+| retailer | M2O → retailer | |
+| buyer | M2O → buyer | |
+| order_number | string | |
+| order_date | date | |
+| quantity | integer | |
+| **value** | decimal | 🔒pricing |
+
+### 3.3 Automation / ledger collections
+
+**`stage_history`** — the time-in-stage / SLA ledger (written by a Flow)
+| field | type | notes |
+|---|---|---|
+| product | M2O → product | |
+| from_stage | M2O → stage (nullable) | |
+| to_stage | M2O → stage | |
+| changed_by | M2O → directus_users | |
+| changed_at | timestamp | |
+
+From this + `product_type` SLA + `stage` order, compute (in views/analytics, not stored): `time_in_current_stage`, `total_cycle_age`, `projected_completion`, `on_track`.
+
+### 3.4 Forward-compat stubs (define later, in Phases 2–3)
+- **CRM (Phase 2):** `retailer`→company, `buyer`→contact already exist; add `opportunity` (or reuse `project`), `activity`, `email_message`, plus the Twenty fork's custom objects (`licensor_approval_thread`, `meeting_note`, `department`).
+- **DAM (Phase 3):** `asset` (file, nas_path, thumbnail_url, style_group, metadata, checkout state), `style_group`, `style_guide_file` (PopSG). `design.asset` and `product`/`design` thumbnails point here.
+
+---
+
+## 4. Stage models (status options)
+
+**POP — 17 stages** (`stage` rows, business_unit=POP): Art files creation · Licensing sheet creation · Licensing sheet review *(gate)* · Ready to submit · Concept submitted · Revisions · Concept approved · Concept approved with changes · PO received · Sales requested sample · Sample requested · Sample received · Factory resample · Sample sent to licensor (PPS) · Sample revision · Pre-production approved · Production approved. Plus cancellation handled by `closure_reason`.
+
+**Spruce — 11 stages** (`stage` rows, business_unit=Spruce): Send Out Art for PO · Approved for Future Orders · Sample Received · Sample Requested · Price Requested/Buyer Approving · Initial Approval/Selections Made · With Buyer for Approval · Waiting for Factory · In Work · Upcoming Projects · On Hold.
+
+Kanban: group `product` by `stage`, filter by `business_unit`.
+
+---
+
+## 5. Permissions (Directus policies) — role × access
+
+| Role | product specs/stage | **cost_target / quoted_cost / order.value (pricing)** | brand_assurance / pi | design/art fields | who |
+|---|---|---|---|---|---|
+| **Designer** | read | **NO READ** (policy hides field) | read | read/write | creative & technical designers |
+| **Sales** | read | read | read | read | Adam |
+| **Sourcing / China** | read | **read/write** | read | read | Albert + China team |
+| **Licensing** | read | read | **read/write** | read | licensing manager/coordinator |
+| **Creative Director** | read + move stage | read | read | read/comment | Liz / Jen |
+| **PM (admin in line)** | read/write all | read | read | read/write | Jessica |
+
+**The make-or-break test (spike step 5):** log in as **Designer** and confirm `cost_target`/`quoted_cost`/`order.value` are not visible anywhere — this is the one requirement no other evaluated platform met without forking.
+
+---
+
+## 6. Flows (no-code automation)
+
+1. **Stage-history ledger** *(spike)* — trigger: `product.stage` updated → **Create Item** in `stage_history` `{product, from_stage, to_stage, changed_by, changed_at}`.
+2. **Dormant alert** — schedule (daily): products at "Concept Approved" with no related `order` and no sample stage for N days → flag/notify.
+3. **SLA / stuck alert** — schedule: `time_in_current_stage` (from `stage_history`) > `product_type` SLA for that stage → notify PM.
+4. **Multi-buyer conflict** — trigger: a `design` gains a 2nd related `project` while a product is mid-build → notify.
+5. **Next-person notification** — trigger: `product.stage` enters a stage owned by another role → notify that role.
+6. **Brand Assurance required** — trigger: `product.stage` = "Concept submitted" and `brand_assurance_number` empty → require/flag.
+
+*(Complex logic — multi-buyer detection, the AI assistant — can also live in the existing Cloudflare Worker/D1 layer, fed by Directus webhooks, rather than Flows. Use whichever is simpler per case.)*
+
+---
+
+## 7. Migration mapping (ClickUp → Directus, summary)
+
+- ClickUp parent "project" tasks → `project`; child SKU tasks → `product` (keep the SKU code in `product.code`).
+- Spruce `design_collection` from the "General Presentations" board; `design` rows from presentations.
+- Licensor/channel **tags** → `licensor`/`property` relations + `business_unit` + flags (drop the stale `for adam` tag).
+- Buyer UUIDs → resolve to `buyer.name` where possible.
+- Ancient open items (4–5 yr) → import with `closure_reason = abandoned`.
+- Use Directus `external_id`/`external_source` = the ClickUp id on every row for traceability.
+- Dead boards (Freelancers Generic) → don't import.
+
+---
+
+## 8. The minimal spike subset (build these first)
+
+For the Phase-1 spike (`directus-execution-plan.md` §6), build only: `retailer`, `buyer`, `licensor`, `factory`, `project`, `design`, `product` (with `stage` as a simple single-select of the Spruce 11), `stage_history`, plus the **Designer policy hiding pricing** and the **stage-history Flow**. That's enough to prove the relational graph, the Kanban board, field-level visibility, and the SLA foundation — with zero custom code.
