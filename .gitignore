@@ -4,6 +4,7 @@ __pycache__/
 snapshot_output/
 node_modules/
 .env
+backups/
 
 # Playwright MCP scratch
 .playwright-mcp/
