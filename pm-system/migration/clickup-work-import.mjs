@@ -107,6 +107,12 @@ function customFieldValue(field) {
   return String(value)
 }
 
+function customFieldJsonValue(field) {
+  const value = field.value
+  if (value === undefined || value === null || value === '') return null
+  return JSON.stringify(value)
+}
+
 async function clearRows(collection, productId) {
   const rows = await dx('GET', `/items/${collection}?filter[product][_eq]=${productId}&filter[source_system][_eq]=clickup&fields=id&limit=-1`)
   for (const row of rows) await dx('DELETE', `/items/${collection}/${row.id}`)
@@ -199,6 +205,12 @@ async function importProduct(product, { productByExternal, timeByTask }) {
     clickup_url: task.url || null,
     clickup_list_id: task.list?.id || product.clickup_list_id || null,
     clickup_list_name: task.list?.name || product.clickup_list_name || null,
+    clickup_parent_id: task.parent || null,
+    clickup_top_level_parent_id: task.top_level_parent || null,
+    clickup_status: task.status?.status || null,
+    clickup_status_type: task.status?.type || null,
+    clickup_status_color: task.status?.color || null,
+    clickup_status_order: task.status?.orderindex ?? null,
     clickup_created_at: msToIso(task.date_created),
     clickup_updated_at: msToIso(task.date_updated),
     clickup_closed_at: msToIso(task.date_closed),
@@ -240,7 +252,7 @@ async function importProduct(product, { productByExternal, timeByTask }) {
       name: field.name || field.id || 'Custom field',
       field_type: field.type || null,
       value_text: customFieldValue(field),
-      value_json: field.value,
+      value_json: customFieldJsonValue(field),
       source_id: field.id || stableId(product.external_id, field.name),
       source_system: 'clickup',
       raw: field,

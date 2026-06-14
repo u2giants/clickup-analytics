@@ -135,6 +135,12 @@ async function main() {
     await ensureField(collection, 'clickup_url', string)
     await ensureField(collection, 'clickup_list_id', string)
     await ensureField(collection, 'clickup_list_name', string)
+    await ensureField(collection, 'clickup_parent_id', string)
+    await ensureField(collection, 'clickup_top_level_parent_id', string)
+    await ensureField(collection, 'clickup_status', string)
+    await ensureField(collection, 'clickup_status_type', string)
+    await ensureField(collection, 'clickup_status_color', string)
+    await ensureField(collection, 'clickup_status_order', decimalSort)
     await ensureField(collection, 'clickup_created_at', timestamp)
     await ensureField(collection, 'clickup_updated_at', timestamp)
     await ensureField(collection, 'clickup_closed_at', timestamp)
@@ -149,6 +155,12 @@ async function main() {
     'clickup_url',
     'clickup_list_id',
     'clickup_list_name',
+    'clickup_parent_id',
+    'clickup_top_level_parent_id',
+    'clickup_status',
+    'clickup_status_type',
+    'clickup_status_color',
+    'clickup_status_order',
     'clickup_created_at',
     'clickup_updated_at',
     'clickup_closed_at',
@@ -161,6 +173,12 @@ async function main() {
     'clickup_url',
     'clickup_list_id',
     'clickup_list_name',
+    'clickup_parent_id',
+    'clickup_top_level_parent_id',
+    'clickup_status',
+    'clickup_status_type',
+    'clickup_status_color',
+    'clickup_status_order',
     'clickup_created_at',
     'clickup_updated_at',
     'clickup_closed_at',
