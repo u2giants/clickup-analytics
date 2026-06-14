@@ -27,7 +27,7 @@ Always start with **`AGENTS.md`**. Then load only what the task needs:
 | Understand what ClickUp monitoring proved | `docs/product-flow-evidence-pack.md`, `BUSINESS_INTELLIGENCE.md`, live D1 when needed | implementation docs unless changing schema |
 | Why Directus (vs Plane/Twenty) | `docs/platform-decision-report.md`, `docs/plane-free-edition-gaps.md` | — |
 | Build/extend the PM system | `AGENTS.md`, `docs/data-model.md`, `docs/pm-system-design.md`, `pm-system/README.md` | legacy analytics docs |
-| Change the Directus schema / Flows / roles | `docs/data-model.md`, `pm-system/apply-schema.mjs` | deployment docs unless infra changes |
+| Change the Directus schema / Flows / roles | `docs/data-model.md`, `pm-system/apply-schema.mjs`; for the workflow/lifecycle add-on also read `pm-system/add-workflow-model.mjs` | deployment docs unless infra changes |
 | Deploy / domain / env / runtime config | `AGENTS.md` §13, `docs/deployment.md` (legacy worker), `pm-system/docker-compose.yml` | — |
 | Migration import (ClickUp → Directus) | `docs/data-model.md` §7, `BUSINESS_INTELLIGENCE.md`, `docs/legacy/*` (when archived) | — |
 | Work on the legacy worker | `integrations/worker/README.md`, `BUSINESS_INTELLIGENCE.md` | PM docs |
@@ -156,10 +156,30 @@ Login lands on the first non-hidden collection in the content nav. Collections s
 **Actually:** the SPA frontends (`pm-dev` / `pm.designflow.app`) and the API (`data.designflow.app`) are sibling subdomains, so auth uses **session cookies scoped to `.designflow.app`** (`SESSION_COOKIE_DOMAIN` / `REFRESH_TOKEN_COOKIE_DOMAIN`, `*_SECURE=true`, `*_SAME_SITE=lax`) plus `CORS_CREDENTIALS=true` and a **specific** `CORS_ORIGIN` allow-list (never `*`/reflect-all with credentials). Microsoft SSO returns into the SPA via `AUTH_MICROSOFT_REDIRECT_ALLOW_LIST` (the Entra redirect URI itself stays the backend `.../auth/login/microsoft/callback`). The frontend SDK uses `authentication('session', { credentials: 'include' })`.
 **Do not change because:** widening `CORS_ORIGIN` to reflect-all while credentials are on is a CSRF-via-CORS risk; changing the cookie domain logs everyone out.
 
-### Frontend preview runs as a raw Docker container (temporary)
-**Looks like:** a `poppim-web` container on the `coolify` network with hand-written Traefik labels, NOT a Coolify-managed app.
-**Actually:** `poppim-web` (the PIM frontend repo) is deployed at **`https://pm-dev.designflow.app`** as a **locally-built image** run via `docker run` with Traefik labels (entrypoints `http`/`https`, certresolver `letsencrypt`, port 80) — because the `gh` token lacks `write:packages` for GHCR and the repo build isn't wired into Coolify yet. This is a **temporary preview deviation** from the deploy-via-Coolify standard.
-**Replace with:** a proper Coolify app (GHCR image + GitHub Actions, or Coolify git build) at the real `pm.designflow.app` launch. To rebuild the preview: `docker build` in the `poppim-web` repo, then `docker rm -f poppim-web` + the documented `docker run`.
+### PM frontend deploy is now CI/Coolify, not raw Docker
+**Looks like:** older notes mention a hand-run `poppim-web` container on the `coolify` network.
+**Actually:** `poppim-web` is now a Coolify service deployed from GHCR by GitHub Actions. `pm.designflow.app`, `pm-dev.designflow.app`, and `pm-ci.designflow.app` point at that service; routine deploy is `git push main` in the `poppim-web` repo.
+**Do not change because:** reintroducing raw Docker bypasses the CI verify/build/publish path and can leave the server running an untracked bundle. Read `/worksp/poppim-web/AGENTS.md` and `/worksp/poppim-web/docs/cicd.md` before changing PM frontend deployment.
+
+### Workflow model was added after the initial schema
+What changed:
+The workflow/lifecycle add-on was applied by `pm-system/add-workflow-model.mjs` on 2026-06-14, not by rerunning the original full `apply-schema.mjs`. It added shared lifecycle fields to `product`, `project`, `design`, and `design_collection`; added `product_submission`, `product_sample`, `revision_request`, and `pm_saved_view`; and extended `order` with project/status/notes.
+
+Why:
+The frontend now depends on business-specific workflow records, lifecycle queues, and saved views. The add-on migration was kept additive because production already held imported ClickUp data.
+
+Future sessions should:
+Use `pm-system/add-workflow-model.mjs` as the reference for this layer and keep `docs/data-model.md` in sync. Vendor still has no workflow collection access; do not grant vendor product/order/workflow access until per-vendor row scoping exists.
+
+### Workflow backfill is idempotent but already applied
+What changed:
+`pm-system/migration/backfill-workflow-model.mjs` backfilled production on 2026-06-14: 16,534 products received lifecycle fields, plus 84 `product_submission`, 5 `product_sample`, and 610 `revision_request` rows. Backfilled child rows use `external_source='workflow_backfill_v1'` and stable `external_id` values for dedupe.
+
+Why:
+ClickUp evidence had repetitive product flow, but the custom PM app needs synthesized actionable records instead of forcing users to read raw imported history.
+
+Future sessions should:
+Treat those counts as the verified post-backfill baseline. The script is safe to dry-run by default; only write with `APPLY=1`. Do not delete/recreate backfilled rows unless you intentionally change the `external_source` strategy and have verified the production counts first.
 
 ## 12. Credentials and environment
 
@@ -205,20 +225,20 @@ Deployed Directus + Postgres on Coolify at `data.designflow.app`. Two non-obviou
 | open | Repo cleanup | Archive legacy root docs → `docs/legacy/`, delete dead ones (awaiting Albert's OK from the earlier proposal) |
 | open | `apply-schema.mjs` creates a test Designer user | Remove user creation from `apply-schema.mjs` (keep it in `seed-and-verify.mjs` only) — it was deleted from prod manually |
 | open | Postgres backups | Add scheduled `pg_dump` of `directus-db` + document retention |
-| open | Phase-1.x data model | M2M relations (multi-buyer seam), remaining Flows (dormant/SLA), per-role saved Views |
+| partial | Phase-1.x data model | Workflow/lifecycle fields, submissions, samples, revisions, order enhancements, and saved-view collection are done (2026-06-14). Remaining: M2M relations (multi-buyer seam), remaining Flows (dormant/SLA), and role-specific default views/presets. |
 | superseded | Designflow PLM integration | Dropped in favor of Entra-as-role-hub (Model B); roles now centralize in Entra, not another app |
 | open | Vendor role row-scoping | Vendor role has no product access yet; add per-vendor filter (user→factory/vendor map) so a vendor sees only their own products |
 | open | CRM/DAM read Entra groups | Wire the CRM and DAM to read the six `POP PIM ·` groups for roles (read-only consumers; one writer = Directus) |
 | open | Verify new-user notify Flow end-to-end | "New user role reminder" Flow is active but only fires on a real `provider=microsoft` sign-in; confirm on next real SSO signup |
 | open | ClickUp → Directus migration import | Script under `pm-system/migration/` reading D1 → Directus API with `external_id` |
 | open | Orphaned Entra secret | One unused client secret exists on the SSO app (lost to a capture bug); remove for hygiene |
-| done | Product cover image storage | 2026-06-12: migrated **3,747** product covers to **DigitalOcean Spaces** (originals + thumbs); **0** ClickUp URLs remain, 12,787 products genuinely have no image (2 were unrecoverable ClickUp 403s → set empty). Chose Spaces (S3, public Space `poppim` @ `nyc3`) over R2. `pm-system/migration/clickup-to-spaces.mjs` is the single migration: for each product it downloads the **original** ClickUp cover (preferring a working ClickUp URL already in `cover_url`, else re-deriving it from the ClickUp API via `external_id` — the `_large` thumbnails ClickUp disabled now 403), uploads the bytes **verbatim, no resize** to `covers/<id>.<ext>`, ALSO generates a webp thumbnail (sharp, ≤400px) at `covers/<id>_thumb.webp`, and repoints `product.cover_url` at the Spaces original URL. Frontend: board cards use the thumb (`coverThumbUrl` derived in `adapter.ts`), the opened card modal uses the original. Resumable (offset checkpoint `/tmp/clickup-to-spaces.checkpoint`), idempotent (already-migrated originals get a thumb backfill via a HEAD check), ClickUp-rate-limited ~85/min. Creds in mode-600 `~/.directus-deploy.env` (`DO_SPACES_*`). **User directive: store originals, do NOT resize** (a sharp→webp≤1000px _replace_ pass was reverted; thumbs are a separate companion file, the original is untouched). Directus's own file storage is still local; design files stay on NAS. Run/verify: see `HANDOFF.md`. |
+| done | Product cover image storage | 2026-06-12: migrated **3,747** product covers to **DigitalOcean Spaces** (originals + thumbs); **0** ClickUp URLs remain, 12,787 products genuinely have no image (2 were unrecoverable ClickUp 403s → set empty). Chose Spaces (S3, public Space `poppim` @ `nyc3`) over R2. `pm-system/migration/clickup-to-spaces.mjs` is the single migration: for each product it downloads the **original** ClickUp cover (preferring a working ClickUp URL already in `cover_url`, else re-deriving it from the ClickUp API via `external_id` — the `_large` thumbnails ClickUp disabled now 403), uploads the bytes **verbatim, no resize** to `covers/<id>.<ext>`, ALSO generates a webp thumbnail (sharp, ≤400px) at `covers/<id>_thumb.webp`, and repoints `product.cover_url` at the Spaces original URL. Frontend: board cards use the thumb (`coverThumbUrl` derived in `src/domain/products/adapters.ts`), the opened card modal uses the original. Resumable (offset checkpoint `/tmp/clickup-to-spaces.checkpoint`), idempotent (already-migrated originals get a thumb backfill via a HEAD check), ClickUp-rate-limited ~85/min. Creds in mode-600 `~/.directus-deploy.env` (`DO_SPACES_*`). **User directive: store originals, do NOT resize** (a sharp→webp≤1000px _replace_ pass was reverted; thumbs are a separate companion file, the original is untouched). Directus's own file storage is still local; design files stay on NAS. |
 | done | Rebind `pm.designflow.app` to the PM frontend | 2026-06-11 — dropped `pm` from Coolify sub-app `id=16` fqdn (now `data` only); `pm` added to `AUTH_MICROSOFT_REDIRECT_ALLOW_LIST`; `pm.designflow.app` now serves `poppim-web`. Data Studio is `data.designflow.app` only. |
 | partial | Clean up rename leftovers | 2026-06-12: old Coolify status rows `service_applications.id=15` (`poppim-app`) and `service_databases.id=3` (`poppim-db`) were marked `exclude_from_status=true` to fix false `degraded (unhealthy)` status. Still remove old Docker volumes `<uuid>_poppim-pgdata` / `_poppim-extensions` after backup window. |
 | open | Reframe docs PIM-vs-backend | This repo is now the shared backend; `pm-system/` is the PIM domain. Deeper doc reframe (and possible `pm-system/`→domain folders) when CRM/DAM arrive |
-| open | Proper Coolify/CI deploy for `poppim-web` | Replace the temporary raw-docker `pm-dev` preview (§11) with a Coolify app: GHCR image + GitHub Actions, or Coolify git-build |
+| done | Proper Coolify/CI deploy for `poppim-web` | `poppim-web` deploys through GitHub Actions → GHCR → Coolify service; read `/worksp/poppim-web/docs/cicd.md`. |
 | open | Confirm end-to-end Microsoft SSO into the SPA | Redirect chain verified to the MS hand-off; the post-callback return + cookie set on a real tenant login is untested — confirm on first real SSO sign-in at `pm-dev` |
-| done | PIM frontend `poppim-web` (slice 1) | React/Vite/Tailwind/shadcn app, Design theme, board + task-detail with assignees/checklist/subtasks/comments; live preview at `pm-dev.designflow.app`; 2026-06-11 |
+| done | PIM frontend `poppim-web` tailored workflow slice | React/Vite/Tailwind/shadcn app, Design theme, board + product detail with assignees/checklist/subtasks/comments, plus real-data Control Room/My Work/projects/designs/submissions/samples/revisions/orders/accounts/reports/settings views; live at `pm.designflow.app`; 2026-06-14 |
 | done | CRM cutover from Twenty to Directus | `crm.designflow.app` serves `popcmr-web`; Twenty server/worker stopped; Outlook ingest/reroute systemd timers + Fireflies webhook container live; ClickUp sync intentionally omitted; 2026-06-11 |
 | done | Collaboration model | `checklist_item`, `subtask`, `product_assignee` (M2M) + app-role perms (`pm-system/add-collaboration-model.mjs`); 2026-06-11 |
 | done | Rename backend poppim → directus | Repo/folder/service/containers/volumes → `directus`; URL → `data.designflow.app`; verified 16,534 products intact; 2026-06-10 |

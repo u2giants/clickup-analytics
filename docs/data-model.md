@@ -299,6 +299,17 @@ These fields exist on `product`, `project`, `design`, and `design_collection`. T
 | is_default | boolean | default for the owner scope |
 | shared_with_role | M2O → directus_roles | optional shared role visibility |
 
+### 3.2.2 Workflow model migration status
+
+What changed:
+The workflow/lifecycle layer above was applied to production on 2026-06-14 by `pm-system/add-workflow-model.mjs`. A one-time evidence backfill then populated 16,534 product lifecycle records plus 84 submissions, 5 samples, and 610 revision requests via `pm-system/migration/backfill-workflow-model.mjs`.
+
+Why:
+The imported ClickUp/D1 evidence had repeated task activity, but the custom PM frontend needs synthesized business objects that expose next action, ownership, waiting/blocker context, submissions, samples, and revisions without forcing users to interpret raw history.
+
+Future sessions should:
+Treat the backfill as an evidence-derived baseline, not as a full historical recreation of every repeated ClickUp event. Backfilled child rows use `external_source='workflow_backfill_v1'` and stable `external_id` values for dedupe; dry-run the script first and use `APPLY=1` only when intentionally writing.
+
 ### 3.3 Automation / ledger collections
 
 **`stage_history`** — the time-in-stage / SLA ledger (written by a Flow)
