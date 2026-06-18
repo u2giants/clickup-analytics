@@ -94,16 +94,25 @@ SELECT 'ingested_contact', many_field,
 UPDATE directus_relations SET one_collection='ingested_domains' WHERE one_collection='retailer' AND many_collection LIKE 'crm%';
 UPDATE directus_relations SET one_collection='ingested_contact' WHERE one_collection='buyer'    AND many_collection LIKE 'crm%';
 
--- ── 8. Copy-on-promotion: flag a domain customer → it appears in curated retailer ──
--- Promotion only; never clobbers curated edits, never auto-removes (protects PIM FKs).
+-- ── 8. Copy-on-promotion + edit-sync ──
+-- ingested_domains is the company master the CRM edits; the curated retailer table is a
+-- projection of its customers (used by PIM + operational CRM). Promotion/edits sync into
+-- retailer; demotion never auto-removes (protects PIM FKs — product.retailer etc.).
 CREATE OR REPLACE FUNCTION promote_customer_to_retailer() RETURNS trigger AS $$
 BEGIN
   IF NEW.customer_status IN ('ACTIVE_CUSTOMER','POTENTIAL_CUSTOMER') THEN
-    INSERT INTO retailer SELECT (NEW).* ON CONFLICT (id) DO NOTHING;
+    INSERT INTO retailer SELECT (NEW).*
+    ON CONFLICT (id) DO UPDATE SET
+      name=EXCLUDED.name, aliases=EXCLUDED.aliases, resale_restriction=EXCLUDED.resale_restriction,
+      notes=EXCLUDED.notes, external_id=EXCLUDED.external_id, external_source=EXCLUDED.external_source,
+      domain=EXCLUDED.domain, routing_aliases=EXCLUDED.routing_aliases, so_patterns=EXCLUDED.so_patterns,
+      customer_status=EXCLUDED.customer_status, chain_type=EXCLUDED.chain_type,
+      primary_salesperson=EXCLUDED.primary_salesperson, account_owner=EXCLUDED.account_owner,
+      logo_url=EXCLUDED.logo_url;
   END IF;
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 DROP TRIGGER IF EXISTS promote_customer ON ingested_domains;
-CREATE TRIGGER promote_customer AFTER INSERT OR UPDATE OF customer_status
+CREATE TRIGGER promote_customer AFTER INSERT OR UPDATE
   ON ingested_domains FOR EACH ROW EXECUTE FUNCTION promote_customer_to_retailer();

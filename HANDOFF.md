@@ -23,14 +23,23 @@
 - **`poppim-web`** `fetchCustomers()` reads the clean `retailer` directly (filter removed); deployed separately.
 - Directus app container restarted to refresh the schema cache.
 
-### Phase 4 — `popcrm-web` (done 2026-06-18, commit a020eba)
+### Phase 4 — `popcrm-web` (done 2026-06-18, commits a020eba then refined)
 
-The CRM is the triage/curation surface, so its company/contact reads + writes target the FULL
-ingested registries. `features/crm/api.ts`: `fetchRetailers`/`updateRetailer` →
-`ingested_domains`, `fetchBuyers`/`updateBuyer` → `ingested_contact`; `Schema` type extended.
-Nested `crm_*` expansions already resolve to the ingested tables via the repointed relations.
+The CRM uses BOTH sets: **operational** pages/pickers (Opportunities/Programs, Departments,
+Tasks, Notes, Pipeline, Overview) read the **curated** `retailer`/`buyer`; the **triage**
+pages (Accounts, Contacts, Email Routing, Meetings, Data Admin) read the **full**
+`ingested_domains`/`ingested_contact`. `features/crm/api.ts` exposes `fetchRetailers`/
+`fetchBuyers` (curated) + `fetchIngestedDomains`/`fetchIngestedContacts` (full);
+`updateRetailer`/`updateBuyer` write the ingested master (where the CRM edits companies/
+contacts + sets `customer_status`). `CrmDataContext` loads both pairs; triage pages alias the
+ingested lists at their destructuring site. `Schema` type extended.
+
 Mirrored `directus_permissions`: copied every `retailer`→`ingested_domains` (11 rows) and
-`buyer`→`ingested_contact` (15 rows) policy grant, then restarted Directus.
+`buyer`→`ingested_contact` (15 rows) grant; restarted Directus.
+
+The `promote_customer` trigger now fires on ALL `ingested_domains` updates and **syncs every
+column** into `retailer` for customers (so CRM edits to a customer stay reflected in the curated
+projection). Still promotion-only — never auto-removes on demotion (protects PIM FKs).
 
 ### Still TODO
 
