@@ -65,6 +65,7 @@ Our custom code lives here:
 | Coolify DB `service_applications.id=16` `fqdn` | Set to `https://data.designflow.app:8055` directly in Coolify's Postgres | Coolify's public API has no endpoint to set a **service sub-app** custom domain; the field the UI edits had to be set in the datastore (see §11) | If the service is recreated from scratch, re-apply; check the Traefik `Host()` label |
 | Coolify DB stale rename rows (`service_applications.id=15`, `service_databases.id=3`) | Set `exclude_from_status=true` on old `poppim-app` / `poppim-db` rows | Coolify counted the exited pre-rename rows in the Directus service rollup, showing `degraded (unhealthy)` even while `directus-app`/`directus-db` and `/server/health` were OK | If the service is recreated, verify old sub-service rows are not included in status |
 | Host systemd timer `directus-entra-sync.timer` (runs as `ai`, hourly) | Runs `pm-system/sync/entra-role-sync.mjs` on this VPS — NOT in Coolify | Intentionally keeps the Entra **directory-write** credential off the internet-facing Directus container; it lives only in mode-600 `/home/ai/.directus-deploy.env` (see §11 Entra sync) | If the host is rebuilt, re-create the unit + timer (files under `/etc/systemd/system/directus-entra-sync.*`) |
+| Host systemd timer `plm-sync.timer` (runs as `ai`, daily 03:30) | Runs `pm-system/run-plm-sync.sh` → `pm-system/sync-plm-masters.mjs` on this VPS — NOT in Coolify | One-way Designflow-PLM → Directus master-data sync (customers/licensors/properties/characters). Host-side so it reaches Postgres directly (`pg` is a host dep of this repo); secrets in mode-600 `/home/ai/.plm-sync.env` (see §11 PLM link) | If the host is rebuilt, re-create the unit + timer + env file (units under `/etc/systemd/system/plm-sync.*`, repo copies in `pm-system/systemd/`); `npm i` to restore `pg` |
 
 ## 7. Task-to-file navigation
 
@@ -221,6 +222,20 @@ ClickUp attachment URLs are not durable storage. The PM frontend now prefers `th
 Future sessions should:
 Treat the 47 unstored rows as source-byte recovery work, not missing database rows. Verify by probing `product_file.source_url` anonymously and with `CLICKUP_TOKEN`; if ClickUp still returns 0 bytes/404, recover from another source (old export/NAS/user upload) rather than rerunning the same URL loop.
 
+### Designflow PLM is the customer/licensor master (one-way sync into Directus)
+
+What changed:
+`pm-system/sync-plm-masters.mjs` (daily `plm-sync.timer`) pulls authoritative data from Designflow PLM into Directus: licensors/properties/characters (cross-ref `plm_mg_code`, unique within parent) and customers (table `retailer_plm_customer`, PK = PLM `customers_id`, → curated `retailer`). It is **create/link-only** — never renames, deletes, unlinks local rows, or downgrades status. PLM is authoritative but **not exhaustive**. See `docs/data-model.md` "PLM master-data link".
+
+Why:
+PLM syncs from the ERP, so it is the source of truth for who is a real customer and which licensors/properties exist. Tying Directus customer status to PLM keeps the app's customer list honest.
+
+Future sessions should:
+- Auth header is **`x-api-key`** with a long-lived `df_live_…` key — NOT `x-apy-key` (a typo the owner pasted once; it 403s) and no longer the old 30-day `X-User-Authorization` JWT. Endpoints: `…/item_master/lib/getLicensorsWithProperties`, `…/core/customers/getCustomers`.
+- The customer mapping is **many-to-one** (banners: TJX corp + HomeGoods → one `retailer`), so a scalar `plm_customer_id` won't do — keep the `retailer_plm_customer` table. PLM `customers_code` is NOT unique (e.g. `OS`); key on `customers_id`.
+- **First-time** links promote a POTENTIAL retailer to ACTIVE; re-runs never touch status. Owner overrides are pinned in the script's `CUST_LINK`/`CUST_CREATE`/`CUST_SKIP` maps (some PLM ACTIVE customers are kept POTENTIAL or skipped as out-of-business/dup/placeholder) — edit those maps, don't special-case in SQL.
+- Postgres bind params on `varchar` columns (`plm_mg_code`, `name`) need an explicit `::text` cast or you get `42P08 inconsistent types deduced` — the masters queries had this latent bug. Always test the script end-to-end (it's idempotent: a clean re-run reports all-zeros + 7 skipped).
+
 ## 12. Credentials and environment
 
 All runtime secrets live in **Coolify** (service `nzli…` env). None are in the repo. A local convenience copy is at `/home/ai/.directus-deploy.env` (chmod 600, outside repo) — safe to delete once Coolify is the trusted source.
@@ -234,6 +249,7 @@ All runtime secrets live in **Coolify** (service `nzli…` env). None are in the
 | `AUTH_MICROSOFT_CLIENT_ID/SECRET`, `MS_TENANT_ID` | Entra OIDC SSO | Coolify | — | yes |
 | `PUBLIC_URL` | `https://data.designflow.app` | Coolify | — | yes |
 | `GRAPH_TENANT_ID`, `GRAPH_SYNC_CLIENT_ID`, `GRAPH_SYNC_CLIENT_SECRET` | Entra role-sync write creds (Model B) | **secrets file only** (`/home/ai/.directus-deploy.env`); deliberately NOT in Coolify/the container — see §11 | — | yes (host timer) |
+| `PLM_API_KEY`, `DB_PASSWORD` | Designflow-PLM sync (`plm-sync.timer`) — PLM `x-api-key` + Postgres password | **secrets file only** (`/home/ai/.plm-sync.env`, mode 600); NOT in the repo. `DATABASE_URL` is built at runtime by `run-plm-sync.sh` (resolves the DB container IP) | — | yes (host timer) |
 
 Cloudflare DNS token and Coolify API token are operator credentials (in `CLAUDE.md` for Coolify); not app runtime config.
 
@@ -266,7 +282,8 @@ Deployed Directus + Postgres on Coolify at `data.designflow.app`. Two non-obviou
 | open | `apply-schema.mjs` creates a test Designer user | Remove user creation from `apply-schema.mjs` (keep it in `seed-and-verify.mjs` only) — it was deleted from prod manually |
 | open | Postgres backups | Add scheduled `pg_dump` of `directus-db` + document retention |
 | partial | Phase-1.x data model | Workflow/lifecycle fields, submissions, samples, revisions, order enhancements, and saved-view collection are done (2026-06-14). Remaining: M2M relations (multi-buyer seam), remaining Flows (dormant/SLA), and role-specific default views/presets. |
-| superseded | Designflow PLM integration | Dropped in favor of Entra-as-role-hub (Model B); roles now centralize in Entra, not another app |
+| superseded | Designflow PLM as the **role hub** | Dropped in favor of Entra-as-role-hub (Model B); roles centralize in Entra, not another app. (Distinct from the **master-data** sync below — that one is live.) |
+| done | Designflow PLM **master-data** sync (customers/licensors/properties/characters) | 2026-06-19: one-way PLM→Directus sync live via daily `plm-sync.timer`. Licensors/properties/characters cross-ref by `plm_mg_code`; 55 PLM customers reconciled (44 link + 3 create + 7 skip + HomeGoods→TJX) into `retailer_plm_customer`, 15 promoted to ACTIVE. PLM is the customer-status authority. See §11 "PLM master-data link" + `docs/data-model.md`. **Open follow-up:** real **buyers** still aren't synced from PLM (no buyer endpoint); add when available. |
 | open | Vendor role row-scoping | Vendor role has no product access yet; add per-vendor filter (user→factory/vendor map) so a vendor sees only their own products |
 | open | CRM/DAM read Entra groups | Wire the CRM and DAM to read the six `POP PIM ·` groups for roles (read-only consumers; one writer = Directus) |
 | open | Verify new-user notify Flow end-to-end | "New user role reminder" Flow is active but only fires on a real `provider=microsoft` sign-in; confirm on next real SSO signup |

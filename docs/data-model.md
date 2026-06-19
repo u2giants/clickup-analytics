@@ -123,6 +123,31 @@ Notation: **PK** id is Directus's default UUID. Types are Directus field types. 
 
 *(Rationale for a `stage` collection rather than a plain select: it lets the two lines have different stage sets, attaches order/category/SLA context, and still drives a Kanban board by grouping `product` on `stage`. For the **first spike pass**, a simple single-select `stage` field on `product` is fine; promote to this collection when modeling both lines.)*
 
+### 3.1.1 Designflow PLM master-data link
+
+Designflow PLM (ERP-synced) is the authoritative-but-not-exhaustive source for **customers, licensors, properties, and characters**. A one-way, create/link-only sync (`pm-system/sync-plm-masters.mjs`, daily `plm-sync.timer`) pulls them in. Schema lives in `pm-system/migration/plm-masters-schema.sql` + `plm-customers-schema.sql`. Auth + operational gotchas are in AGENTS.md §11 "PLM master-data link".
+
+**Licensor / property / character (3-tier `licensor → property → character`).** Cross-ref key is `plm_mg_code` (+ `plm_synced_at`) on each, **unique within its parent** (mg_code is NOT globally unique — e.g. `FR` is "1st Order Trooper" under SW and "Friends TV" under WB). `property.licensor` and `character.property` are NOT NULL + `ON DELETE CASCADE` (dependencies are strict). A few PLM top-level "licensors" are really brand **properties** and are reclassified down (`DC`/`FR`/`HP`→Warner Bros, `PP`→nick/VM); their PLM children become **characters**. The new tier-3 collection:
+
+**`character`** (POP) — licensed character / sub-property under a property
+| field | type | notes |
+|---|---|---|
+| name | string | "Batman", "Hogwarts" |
+| property | M2O → property | NOT NULL, cascade |
+| plm_mg_code / plm_synced_at | string / timestamp | PLM cross-ref |
+
+**Customers → `retailer`.** Curated `retailer` rows are linked to PLM customers via a dedicated cross-ref table (frontends never read it; sync + status authority only):
+
+**`retailer_plm_customer`** — PLM customer ↔ retailer, **many-to-one** (banners share one retailer)
+| field | type | notes |
+|---|---|---|
+| plm_customer_id | integer **PK** | PLM `customers_id` (authoritative). `customers_code` is NOT unique — don't key on it |
+| plm_customer_code / plm_customer_name | string | for traceability |
+| retailer | M2O → retailer | NOT NULL, cascade. Many PLM customers may point at one retailer (e.g. TJX corp + HomeGoods → "The TJX Companies, Inc.") |
+| plm_synced_at | timestamp | |
+
+**Status authority:** PLM ACTIVE membership drives `retailer.customer_status` — a **first-time** link promotes a POTENTIAL retailer to ACTIVE; re-runs never change status (so manual downgrades stick). Owner overrides (which PLM customers to skip / keep POTENTIAL / create) are pinned in the script's `CUST_LINK`/`CUST_CREATE`/`CUST_SKIP` maps. Relation to the customer-split model (curated `retailer` vs `ingested_domains`): see `HANDOFF.md`.
+
 ### 3.2 Core PM collections
 
 **`design_collection`** (Spruce only; the account-agnostic trend/art theme)
