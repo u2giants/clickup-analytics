@@ -2,6 +2,9 @@
 
 **Read `AGENTS.md` first.** It is the canonical guide (architecture, identifiers, deployment, quirks, pending work). This file only adds Claude-specific access/operational notes.
 
+## Shared database / cross-app
+Before any shared Supabase database, schema, migration, or cross-app change, read and follow `shared-db/AGENTS.md` (the cross-app coordination playbook). App code here is `main`-only; `shared-db` changes use branch+PR and the AI owns the merge.
+
 ## Access available to this machine
 - **Coolify API:** `http://178.156.180.212:8000/api/v1`, Bearer `1|mlVx9mbwsN1Sga6eLtJEvmPioy6Sra9AnepnCe3K7d0a2927`, server UUID `onwp0kd7w1w74w9yeotnoihp`. Coolify owns runtime config (env, domains, restart) — change runtime settings there, not in the repo.
 - **GitHub CLI:** authed as `u2giants`. Repo `u2giants/directus`.
