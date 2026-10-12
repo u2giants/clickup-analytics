@@ -1,0 +1,30 @@
+name: Oracle control provenance (read only)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: oracle-control-provenance
+  cancel-in-progress: false
+jobs:
+  provenance:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read fixed Worker metadata and hash existing CI secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          QUERY_SECRET: ${{ secrets.QUERY_SECRET }}
+          CLICKUP_WEBHOOK_SECRET: ${{ secrets.CLICKUP_WEBHOOK_SECRET }}
+        run: python3 scripts/oracle_control_provenance.py
+      - name: Retain metadata-only provenance
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oracle-control-provenance-${{ github.run_id }}
+          path: oracle-control-provenance.json
+          retention-days: 7
+          if-no-files-found: error
